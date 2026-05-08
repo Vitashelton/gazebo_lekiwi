@@ -1,0 +1,49 @@
+# ==============================================================================
+# YOLO 目标检测参数配置
+# ==============================================================================
+
+yolo:
+  # 模型路径: 支持 yolov5n / yolov5s / yolov8n / yolov8s
+  # 或自定义本地模型路径
+  model_name: "yolov8n"
+
+  # 设备: cpu / cuda / cuda:0
+  device: "cpu"
+
+  # 置信度阈值
+  conf_threshold: 0.5
+
+  # IoU NMS 阈值
+  iou_threshold: 0.45
+
+  # 推理图像尺寸 (pixels)
+  imgsz: 640
+
+  # 关注的类别 (COCO class IDs):
+  #   0=person, 1=bicycle, 2=car, 3=motorcycle, 5=bus, 7=truck
+  #   39=bottle, 56=chair, 62=tv, 63=laptop, 73=book
+  # 如果列表为空则检测所有类别
+  interested_classes: [0, 1, 2, 3, 5, 7, 39, 56, 62, 63, 73]
+
+  # 输入图像话题
+  image_topic: "/d435/color/image_raw"
+
+  # 输出话题
+  result_image_topic: "/yolo/detection_image"       # 标注后图像
+  result_info_topic: "/yolo/detection_info"          # JSON检测信息
+  bbox_marker_topic: "/yolo/bbox_markers"            # RViz可视化检测框
+
+  # 检测响应行为:
+  #   stop:   检测到行人/障碍物时立即停止
+  #   slow:   检测到目标时减速至slow_fraction倍
+  #   avoid:  检测到目标时绕行（通过调整局部代价地图）
+  #   none:   仅检测和记录，不控制
+  response_mode: "slow"          # none / stop / slow / avoid
+  slow_fraction: 0.3             # 减速至30%速度
+  stop_distance: 0.8             # 检测到stop类目标时的停止距离(meters)
+
+  # 防抖设置: 连续检测到N次才触发行为
+  trigger_consecutive: 3
+
+  # 推理频率 (Hz)
+  inference_rate: 10.0
