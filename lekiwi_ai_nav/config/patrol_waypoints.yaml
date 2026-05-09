@@ -1,0 +1,60 @@
+# ==============================================================================
+# 自动巡逻路点配置文件
+# 用户可以在此修改路点坐标、停留时间和是否需要自定义任务
+# 坐标系: map (原点为机器人初始位置)
+# ==============================================================================
+
+# 巡逻循环次数, 0=无限循环
+loop_count: 0
+# 每个路点之间的默认停留时间(秒)
+default_wait_sec: 3.0
+# 是否启动时立即开始巡逻
+auto_start: true
+
+# ==============================================================================
+# 路点列表 (按顺序A -> B -> C -> D -> A -> B -> ... 循环)
+# 每项: x, y, yaw, wait_sec, custom_task
+#   x, y       : 路点在地图坐标系的位置 (米)
+#   yaw        : 到达后期望朝向 (弧度)
+#   wait_sec   : 在此点额外停留秒数（叠加default_wait_sec）
+#   custom_task: 自定义任务类型: none/rotate/wait/signal
+#   task_params: 自定义任务参数 (字典)
+# ==============================================================================
+
+waypoints:
+  - name: "A"
+    x: 1.0
+    y: 0.0
+    yaw: 0.0
+    wait_sec: 2.0
+    custom_task: rotate
+    task_params:
+      angle_deg: 360       # 原地旋转360度
+      speed_rads: 0.8
+
+  - name: "B"
+    x: 1.0
+    y: 2.0
+    yaw: 1.57             # 朝向 +y (90°)
+    wait_sec: 3.0
+    custom_task: signal    # 到达后发布提示话题
+    task_params:
+      message: "Arrived at patrol point B"
+      topic: "/patrol_status"
+
+  - name: "C"
+    x: -1.0
+    y: 2.0
+    yaw: 3.14             # 朝向 -x (180°)
+    wait_sec: 2.0
+    custom_task: wait      # 纯停留
+    task_params:
+      extra_wait_sec: 3.0
+
+  - name: "D"
+    x: -1.0
+    y: 0.0
+    yaw: -1.57            # 朝向 -y
+    wait_sec: 2.0
+    custom_task: none
+    task_params: {}

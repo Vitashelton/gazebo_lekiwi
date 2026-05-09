@@ -1,0 +1,339 @@
+# ==============================================================================
+# Nav2 导航参数 — 适配 LeKiwi 三轮全向轮底盘（Omnidirectional / Holonomic）
+# ==============================================================================
+# 全向轮特性:
+#   - 机器人可同时在 X/Y 方向平移 + 绕 Z 轴旋转
+#   - 使用 MPPI 控制器实现真正的全向路径跟踪
+#   - 不需要"先旋转再前进"，可以边平移边调整朝向
+#   - velocity_smoother 限制 vx/vy/vw 范围，保证运动平稳不漂移
+# ==============================================================================
+
+amcl:
+  ros__parameters:
+    use_sim_time: true
+    base_frame_id: "base_footprint"
+    odom_frame_id: "odom"
+    global_frame_id: "map"
+    # 初始位姿
+    # 自动设置初始位姿（避免手动2D Pose Estimate）
+    set_initial_pose: true
+    always_reset_initial_pose: false
+    initial_pose:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      yaw: 0.0
+    # 扫描匹配
+    scan_topic: /scan
+    # 粒子数：全向定位需要稍多粒子保证稳定性
+    max_particles: 3000
+    min_particles: 500
+    # 初始协方差
+    initial_cov_xx: 0.25
+    initial_cov_yy: 0.25
+    initial_cov_yyaw: 0.0685
+    # 激光模型 — likelihood_field 对全向运动更鲁棒
+    laser_model_type: likelihood_field_prob
+    laser_likelihood_max_dist: 2.0
+    laser_max_beams: 60
+    # 里程计模型 — omni 用 diff-corrected（平面运动通用）
+    odom_model_type: diff-corrected
+    odom_alpha1: 0.2
+    odom_alpha2: 0.2
+    odom_alpha3: 0.2
+    odom_alpha4: 0.2
+    # 重采样
+    resample_interval: 1
+    pf_err: 0.01
+    pf_z: 0.99
+    # 更新阈值（全向运动可设大一点减少计算）
+    update_min_d: 0.1
+    update_min_a: 0.2
+    # 恢复
+    recovery_alpha_slow: 0.001
+    recovery_alpha_fast: 0.1
+
+bt_navigator:
+  ros__parameters:
+    use_sim_time: true
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odom
+    bt_xml_filename: ""
+    default_server_timeout: 20
+    enable_groot_monitoring: false
+    plugin_lib_names:
+      - nav2_compute_path_to_pose_action_bt_node
+      - nav2_compute_path_through_poses_action_bt_node
+      - nav2_follow_path_action_bt_node
+      - nav2_back_up_action_bt_node
+      - nav2_spin_action_bt_node
+      - nav2_wait_action_bt_node
+      - nav2_clear_costmap_service_bt_node
+      - nav2_is_stuck_condition_bt_node
+      - nav2_goal_reached_condition_bt_node
+      - nav2_goal_updated_condition_bt_node
+      - nav2_initial_pose_received_condition_bt_node
+      - nav2_reinitialize_global_localization_service_bt_node
+      - nav2_rate_controller_bt_node
+      - nav2_distance_controller_bt_node
+      - nav2_speed_controller_bt_node
+      - nav2_truncate_path_action_bt_node
+      - nav2_goal_updater_node_bt_node
+      - nav2_recovery_node_bt_node
+      - nav2_pipeline_sequence_bt_node
+      - nav2_round_robin_node_bt_node
+      - nav2_transform_available_condition_bt_node
+      - nav2_time_expired_condition_bt_node
+      - nav2_distance_traveled_condition_bt_node
+      - nav2_single_trigger_bt_node
+      - nav2_is_battery_low_condition_bt_node
+      - nav2_navigate_through_poses_action_bt_node
+      - nav2_navigate_to_pose_action_bt_node
+      - nav2_remove_passed_goals_action_bt_node
+      - nav2_planner_selector_bt_node
+      - nav2_controller_selector_bt_node
+      - nav2_goal_checker_selector_bt_node
+
+# ==============================================================================
+# 控制器服务器 — MPPI全向控制器（Holonomic）
+# ==============================================================================
+controller_server:
+  ros__parameters:
+    use_sim_time: true
+    controller_frequency: 20.0
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.001
+    min_theta_velocity_threshold: 0.001
+    # 崩溃检测
+    failure_tolerance: 0.3
+    progress_checker_plugins: ["progress_checker"]
+    goal_checker_plugins: ["goal_checker"]
+    controller_plugins: ["FollowPath"]
+
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.5
+      movement_time_allowance: 10.0
+
+    goal_checker:
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.15
+      yaw_goal_tolerance: 0.1
+      stateful: true
+
+    # --------------------------------------------------------------------------
+    # MPPI 全向控制器（默认启用，支持 vx/vy/vw 同步控制）
+    # --------------------------------------------------------------------------
+    FollowPath:
+      plugin: "nav2_mppi_controller::MPPIController"
+      # 全向运动学模型
+      motion_model: "Omnidirectional"
+      # 时间步参数
+      time_steps: 20
+      iteration_count: 1
+      lookahead_dist: 0.8
+      # 温度参数（探索/利用平衡）
+      temperature: 0.25
+      # 模型采样数量
+      batch_size: 1000
+      # 控制时序相关参数
+      model_dt: 0.05
+      # 速度限制（三轮全向：vx <= 0.5, vy <= 0.3, vw <= 1.5）
+      vx_max: 0.5
+      vy_max: 0.3
+      wz_max: 1.5
+      vx_std: 0.15
+      vy_std: 0.1
+      wz_std: 0.4
+      # 加速度限制（防止瞬间加减速导致漂移）
+      ax_max: 1.0
+      ay_max: 0.6
+      az_max: 3.0
+      # 代价权重（调参核心）
+      # 路径跟踪代价 — 保证沿全局路径走
+      reference_cost_power: 1
+      reference_cost_weight: 5.0
+      # 目标朝向代价 — 到达目标时的朝向对齐
+      goal_angle_cost_weight: 3.0
+      # 障碍物临界代价 — 避开障碍物（最重要）
+      critical_cost_weight: 25.0
+      # 全局路径对齐代价
+      path_align_cost_weight: 8.0
+      # 路径角度代价 — 保持朝向与路径一致
+      path_angle_cost_weight: 2.0
+      # 首选速度代价 — 鼓励保持较高速度
+      prefered_x_vel: 0.3
+      prefered_y_vel: 0.0
+      prefered_wz_vel: 0.0
+      # 避免代价（在局部代价地图上评估）
+      constrain_velocities: true
+      enforce_path_orientations: false
+      # 全向不需要旋转到航向
+      rotate_to_heading_angular_vel: 0.8
+      rotate_to_heading_min_angle: 0.4
+      # 变换容差
+      transform_tolerance: 0.3
+      # 障碍物足迹膨胀
+      inflation_radius: 0.4
+      inflation_cost_scaling_factor: 3.0
+      # 代价地图临界值
+      costmap_critical_value: 200
+      # 重采样控制噪声比例
+      retry_attempt_limit: 5
+      visualize: false
+
+# ==============================================================================
+# 规划器服务器 — NavFn（全局路径规划）
+# ==============================================================================
+planner_server:
+  ros__parameters:
+    use_sim_time: true
+    planner_plugins: ["GridBased"]
+    expected_planner_frequency: 1.0
+
+    GridBased:
+      plugin: "nav2_navfn_planner/NavFnPlanner"
+      tolerance: 0.5
+      use_astar: false
+      allow_unknown: true
+
+# ==============================================================================
+# 行为服务器 — 恢复行为
+# ==============================================================================
+behavior_server:
+  ros__parameters:
+    use_sim_time: true
+    local_costmap_topic: /local_costmap/costmap_raw
+    global_costmap_topic: /global_costmap/costmap_raw
+    local_footprint_topic: /local_costmap/published_footprint
+    global_footprint_topic: /global_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "wait"]
+    spin:
+      plugin: "nav2_behaviors/Spin"
+    backup:
+      plugin: "nav2_behaviors/BackUp"
+    wait:
+      plugin: "nav2_behaviors/Wait"
+
+# ==============================================================================
+# 路点跟随器
+# ==============================================================================
+waypoint_follower:
+  ros__parameters:
+    use_sim_time: true
+    loop_rate: 20
+    stop_on_failure: false
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: true
+      waypoint_pause_duration: 5
+
+# ==============================================================================
+# 速度平滑器 — 全向运动速度限制和平滑
+# ==============================================================================
+velocity_smoother:
+  ros__parameters:
+    use_sim_time: true
+    smoothing_frequency: 30.0
+    scale_velocities: false
+    # 全向机器人速度包络 [vx, vy, vw]
+    max_velocity: [0.5, 0.3, 1.5]
+    min_velocity: [-0.5, -0.3, -1.5]
+    max_accel: [1.0, 0.6, 3.0]
+    max_decel: [-1.0, -0.6, -3.0]
+    # odom 话题
+    odom_topic: "/odom"
+    odom_duration: 0.1
+    # 死区 — 低于此值的速度指令视为零
+    deadband_velocity: [0.02, 0.02, 0.02]
+    velocity_timeout: 1.0
+
+# ==============================================================================
+# 全局代价地图 — 整体环境感知（静态地图 + 动态障碍物）
+# ==============================================================================
+global_costmap:
+  ros__parameters:
+      use_sim_time: true
+      # 全向轮外接圆半径
+      robot_radius: 0.15
+      update_frequency: 1.0
+      publish_frequency: 0.5
+      global_frame: map
+      robot_base_frame: base_link
+      rolling_window: false
+      width: 5
+      height: 5
+      resolution: 0.05
+      track_unknown_space: true
+      plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
+
+      static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_subscribe_transient_local: true
+        enabled: true
+
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          data_type: "LaserScan"
+          raytrace_max_range: 3.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        enabled: true
+        inflation_radius: 0.4
+        cost_scaling_factor: 5.0
+
+      always_send_full_costmap: true
+
+# ==============================================================================
+# 局部代价地图 — 近距离避障（滚动窗口）
+# ==============================================================================
+local_costmap:
+  ros__parameters:
+      use_sim_time: true
+      robot_radius: 0.15
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      global_frame: odom
+      robot_base_frame: base_link
+      rolling_window: true
+      width: 3
+      height: 3
+      resolution: 0.05
+      plugins: ["obstacle_layer", "inflation_layer"]
+
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
+        enabled: true
+        observation_sources: scan
+        scan:
+          topic: /scan
+          max_obstacle_height: 2.0
+          clearing: true
+          marking: true
+          data_type: "LaserScan"
+          raytrace_max_range: 3.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 2.5
+          obstacle_min_range: 0.0
+
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        enabled: true
+        inflation_radius: 0.35
+        cost_scaling_factor: 6.0
+
+      always_send_full_costmap: true

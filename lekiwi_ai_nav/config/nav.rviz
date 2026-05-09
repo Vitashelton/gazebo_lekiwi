@@ -1,0 +1,140 @@
+Panels:
+  - Class: rviz_common/Displays
+    Name: Displays
+  - Class: rviz_common/Views
+    Name: Views
+Visualization Manager:
+  Class: ""
+  Displays:
+    # TF坐标轴
+    - Class: rviz_default_plugins/TF
+      Name: TF
+      Enabled: true
+      Frame Timeout: 15
+      Marker Scale: 0.3
+
+    # 静态地图
+    - Alpha: 0.7
+      Class: rviz_default_plugins/Map
+      Name: Map
+      Enabled: true
+      Topic:
+        Depth: 1
+        Reliability Policy: Reliable
+        Value: /map
+      Update Topic:
+        Value: /map_updates
+      Color Scheme: map
+      Draw Behind: false
+
+    # 全局路径
+    - Class: rviz_default_plugins/Path
+      Name: Global Plan
+      Enabled: true
+      Topic:
+        Value: /plan
+      Color: 0; 255; 0
+      Line Style: Dashed
+      Line Width: 0.03
+      Alpha: 0.8
+
+    # 局部路径
+    - Class: rviz_default_plugins/Path
+      Name: Local Plan
+      Enabled: true
+      Topic:
+        Value: /local_plan
+      Color: 0; 200; 255
+      Line Width: 0.05
+      Alpha: 0.9
+
+    # 全局代价地图
+    - Class: rviz_default_plugins/Costmap
+      Name: Global Costmap
+      Enabled: true
+      Topic:
+        Value: /global_costmap/costmap
+
+    # 局部代价地图
+    - Class: rviz_default_plugins/Costmap
+      Name: Local Costmap
+      Enabled: true
+      Topic:
+        Value: /local_costmap/costmap
+
+    # 激光扫描
+    - Class: rviz_default_plugins/LaserScan
+      Name: LaserScan
+      Enabled: true
+      Topic:
+        Value: /scan
+      Size (m): 0.01
+      Style: Points
+
+    # 机器人模型 — 关键: 必须指定 Description Topic
+    - Alpha: 1.0
+      Class: rviz_default_plugins/RobotModel
+      Name: RobotModel
+      Enabled: true
+      Description Topic:
+        Value: /robot_description
+      Visual Enabled: true
+      Collision Enabled: false
+      Update Interval: 0
+      Mass Properties:
+        Inertia: false
+        Mass: false
+
+    # AMCL粒子云
+    - Class: rviz_default_plugins/MarkerArray
+      Name: ParticleCloud
+      Enabled: true
+      Topic:
+        Value: /particle_cloud
+
+    # 相机画面
+    - Class: rviz_default_plugins/Image
+      Name: CameraImage
+      Enabled: false
+      Topic:
+        Value: /camera/color/image_raw
+
+    # 巡逻路点标记 (如果有发布)
+    - Class: rviz_default_plugins/MarkerArray
+      Name: WaypointMarkers
+      Enabled: true
+      Topic:
+        Value: /waypoints
+
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: map
+    Frame Rate: 30
+  Tools:
+    - Class: rviz_default_plugins/Interact
+    - Class: rviz_default_plugins/MoveCamera
+    - Class: rviz_default_plugins/Select
+    - Class: rviz_default_plugins/FocusCamera
+    - Class: rviz_default_plugins/Measure
+    - Class: rviz_default_plugins/SetInitialPose
+    - Class: rviz_default_plugins/SetGoal
+    - Class: rviz_default_plugins/PublishPoint
+    - Class: rviz_common/Select
+  Views:
+    Current:
+      Class: rviz_default_plugins/Orbit
+      Distance: 10.0
+      Enable Stereo Rendering: false
+      Focal Point: [0.0, 0.0, 0.0]
+      Focal Shape Size: 0.5
+      Focal Shape Fixed Size: true
+      Name: Current View
+      Near Clip Distance: 0.01
+      Pitch: 0.785
+      Target Frame: <Fixed Frame>
+      Value: Orbit (rviz)
+      Yaw: 0.785
+    Saved: ~
+  Window Geometry:
+    Height: 800
+    Width: 1200
